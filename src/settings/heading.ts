@@ -1,28 +1,18 @@
 type HeadingAlign = "start" | "center" | "end" | "justify";
 
-interface SetHeadingAlignInput {
-  /** 标题对齐方式。 */
-  align: HeadingAlign;
-}
-
-interface SetHeadingColorInput {
-  /** 标题颜色值。 */
-  color: string;
-}
-
 /** 设置标题对齐方式。 */
-export function set_heading_align(settings: Record<string, unknown>, input: SetHeadingAlignInput): void {
-  settings.align = input.align;
+export function set_heading_align(settings: Record<string, unknown>, value: HeadingAlign): void {
+  settings.align = value;
 }
 
-/** 设置标题普通状态颜色。 */
-export function set_heading_title_color(settings: Record<string, unknown>, input: SetHeadingColorInput): void {
-  settings.title_color = input.color;
+/** 设置标题文字颜色。 */
+export function set_heading_title_color(settings: Record<string, unknown>, value: string): void {
+  settings.title_color = String(value);
 }
 
 /** 设置标题悬停状态颜色。 */
-export function set_heading_title_hover_color(settings: Record<string, unknown>, input: SetHeadingColorInput): void {
-  settings.title_hover_color = input.color;
+export function set_heading_title_hover_color(settings: Record<string, unknown>, value: string): void {
+  settings.title_hover_color = String(value);
 }
 
 /** 标题组件专属 settings helper 名称列表。 */

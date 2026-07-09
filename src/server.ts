@@ -1,6 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
 import { ALL_TOOLS } from "./tools.js";
 import { PageManager } from "./page.js";
 
@@ -16,8 +15,6 @@ export async function createAndStartServer(options: ServerOptions = {}): Promise
     version: "1.0.0"
   });
 
-  const outputSchema = { result: z.unknown() };
-
   for (const tool of ALL_TOOLS) {
     server.registerTool(
       tool.name,
@@ -25,14 +22,21 @@ export async function createAndStartServer(options: ServerOptions = {}): Promise
         title: tool.name,
         description: tool.description,
         inputSchema: tool.inputSchema,
-        outputSchema
+        ...(tool.outputSchema ? { outputSchema: tool.outputSchema } : {})
       },
       async (input: Record<string, unknown>) => {
         try {
           const data = await tool.handler(input, pm);
-          return {
+          const result: {
+            content: Array<{ type: "text"; text: string }>;
+            structuredContent?: Record<string, unknown>;
+          } = {
             content: [{ type: "text" as const, text: `${JSON.stringify(data, null, 2)}\n` }]
           };
+          if (tool.outputSchema) {
+            result.structuredContent = data as Record<string, unknown>;
+          }
+          return result;
         } catch (error) {
           return {
             content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}\n` }],

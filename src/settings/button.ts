@@ -4,16 +4,6 @@ type ButtonBorderStyle = "solid" | "double" | "dotted" | "dashed" | "groove" | "
 
 type ButtonUnit = "px" | "%" | "em" | "rem" | "vw" | "custom";
 
-interface SetButtonAlignInput {
-  /** 按钮对齐方式。 */
-  align: ButtonAlign;
-}
-
-interface SetButtonColorInput {
-  /** 按钮颜色值。 */
-  color: string;
-}
-
 interface ButtonBorderWidthValue {
   /** CSS 单位。 */
   unit: ButtonUnit;
@@ -67,38 +57,38 @@ function normalizeButtonBorderWidth(value: ButtonBorderWidthValue) {
 }
 
 /** 设置按钮对齐方式。 */
-export function set_button_align(settings: Record<string, unknown>, input: SetButtonAlignInput): void {
-  settings.align = input.align;
+export function set_button_align(settings: Record<string, unknown>, value: ButtonAlign): void {
+  settings.align = value;
 }
 
 /** 设置按钮普通状态文本颜色。 */
-export function set_button_text_color(settings: Record<string, unknown>, input: SetButtonColorInput): void {
-  settings.button_text_color = input.color;
+export function set_button_text_color(settings: Record<string, unknown>, value: string): void {
+  settings.button_text_color = String(value);
 }
 
 /** 设置按钮悬停状态文本颜色。 */
-export function set_button_hover_color(settings: Record<string, unknown>, input: SetButtonColorInput): void {
-  settings.hover_color = input.color;
+export function set_button_text_hover_color(settings: Record<string, unknown>, value: string): void {
+  settings.hover_color = String(value);
 }
 
 /** 设置按钮普通状态背景颜色。 */
-export function set_button_background_color(settings: Record<string, unknown>, input: SetButtonColorInput): void {
-  settings.background_color = input.color;
+export function set_button_background_color(settings: Record<string, unknown>, value: string): void {
+  settings.background_color = String(value);
 }
 
 /** 设置按钮悬停状态背景颜色。 */
-export function set_button_background_hover_color(settings: Record<string, unknown>, input: SetButtonColorInput): void {
-  settings.button_background_hover_color = input.color;
+export function set_button_background_hover_color(settings: Record<string, unknown>, value: string): void {
+  settings.button_background_hover_color = String(value);
 }
 
 /** 设置按钮普通状态边框颜色。 */
-export function set_button_border_color(settings: Record<string, unknown>, input: SetButtonColorInput): void {
-  settings.border_color = input.color;
+export function set_button_border_color(settings: Record<string, unknown>, value: string): void {
+  settings.border_color = String(value);
 }
 
 /** 设置按钮悬停状态边框颜色。 */
-export function set_button_hover_border_color(settings: Record<string, unknown>, input: SetButtonColorInput): void {
-  settings.button_hover_border_color = input.color;
+export function set_button_hover_border_color(settings: Record<string, unknown>, value: string): void {
+  settings.button_hover_border_color = String(value);
 }
 
 /** 设置按钮边框样式和宽度。 */
@@ -113,15 +103,57 @@ export function set_button_box_shadow(settings: Record<string, unknown>, input: 
   settings.button_box_shadow_box_shadow = input.shadow;
 }
 
+type PaddingUnit = "px" | "%" | "em" | "rem" | "vw";
+
+interface PaddingValue {
+  unit: PaddingUnit;
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+  isLinked: boolean;
+}
+
+interface SetButtonTextPaddingInput {
+  desktop?: PaddingValue;
+  tablet?: PaddingValue;
+  mobile?: PaddingValue;
+}
+
+function normalizePadding(value: PaddingValue) {
+  return {
+    unit: value.unit,
+    top: String(value.top),
+    right: String(value.right),
+    bottom: String(value.bottom),
+    left: String(value.left),
+    isLinked: value.isLinked
+  };
+}
+
+/** 设置按钮文本内边距（响应式）。 */
+export function set_button_text_padding(settings: Record<string, unknown>, input: SetButtonTextPaddingInput): void {
+  if (input.desktop) {
+    settings.text_padding = normalizePadding(input.desktop);
+  }
+  if (input.tablet) {
+    settings.text_padding_tablet = normalizePadding(input.tablet);
+  }
+  if (input.mobile) {
+    settings.text_padding_mobile = normalizePadding(input.mobile);
+  }
+}
+
 /** 按钮组件专属 settings helper 名称列表。 */
 export const BUTTON_SETTING_HELPERS = [
   "set_button_align",
   "set_button_text_color",
-  "set_button_hover_color",
+  "set_button_text_hover_color",
   "set_button_background_color",
   "set_button_background_hover_color",
   "set_button_border_color",
   "set_button_hover_border_color",
   "set_button_border",
-  "set_button_box_shadow"
+  "set_button_box_shadow",
+  "set_button_text_padding"
 ] as const;

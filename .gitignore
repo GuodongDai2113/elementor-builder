@@ -2,3 +2,4 @@ node_modules/
 build/
 .elementor-builder/
 *.log
+superpowers/

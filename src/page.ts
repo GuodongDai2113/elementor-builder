@@ -27,10 +27,18 @@ export interface PageManagerOptions {
 export class PageManager {
   private rootDir: string;
   private pagesDir: string;
+  private writeLocks = new Map<string, Promise<void>>();
 
   constructor(options: PageManagerOptions = {}) {
     this.rootDir = options.rootDir ?? path.join(process.cwd(), ".elementor-builder");
     this.pagesDir = path.join(this.rootDir, "pages");
+  }
+
+  private async withLock<T>(pageId: string, fn: () => Promise<T>): Promise<T> {
+    const prev = this.writeLocks.get(pageId) ?? Promise.resolve();
+    const next = prev.then(fn, fn).catch(() => {}) as Promise<T>;
+    this.writeLocks.set(pageId, next as Promise<void>);
+    return next;
   }
 
   private pagePath(pageId: string): string {
@@ -86,17 +94,19 @@ export class PageManager {
   }
 
   async create(pageId: string): Promise<string> {
-    const timestamp = now();
-    const page: BuilderPage = {
-      pageId,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      tree: [],
-      aliases: {},
-      history: [{ operation: "create_page", at: timestamp }]
-    };
-    await this.savePageFile(page);
-    return pageId;
+    return this.withLock(pageId, async () => {
+      const timestamp = now();
+      const page: BuilderPage = {
+        pageId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        tree: [],
+        aliases: {},
+        history: [{ operation: "create_page", at: timestamp }]
+      };
+      await this.savePageFile(page);
+      return pageId;
+    });
   }
 
   async list(): Promise<Array<Pick<BuilderPage, "pageId" | "createdAt" | "updatedAt">>> {
@@ -119,16 +129,18 @@ export class PageManager {
   }
 
   async import(pageId: string, tree: ElementObject[], aliases?: Record<string, string>): Promise<void> {
-    const timestamp = now();
-    const page: BuilderPage = {
-      pageId,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      tree: cloneJson(tree),
-      aliases: { ...(aliases ?? {}) },
-      history: [{ operation: "import_tree", at: timestamp }]
-    };
-    await this.savePageFile(page);
+    return this.withLock(pageId, async () => {
+      const timestamp = now();
+      const page: BuilderPage = {
+        pageId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        tree: cloneJson(tree),
+        aliases: { ...(aliases ?? {}) },
+        history: [{ operation: "import_tree", at: timestamp }]
+      };
+      await this.savePageFile(page);
+    });
   }
 
   async exportTree(pageId: string): Promise<ElementObject[]> {
@@ -142,9 +154,11 @@ export class PageManager {
   }
 
   async setAlias(pageId: string, alias: string, elementId: string): Promise<void> {
-    const page = await this.loadPage(pageId);
-    page.aliases[alias] = elementId;
-    await this.record(page, "set_alias", elementId);
+    return this.withLock(pageId, async () => {
+      const page = await this.loadPage(pageId);
+      page.aliases[alias] = elementId;
+      await this.record(page, "set_alias", elementId);
+    });
   }
 
   async insertElement(
@@ -154,75 +168,87 @@ export class PageManager {
     position?: number,
     alias?: string
   ): Promise<string> {
-    const page = await this.loadPage(pageId);
-    const targetArr = parent ? this.requireElement(page, parent).elements : page.tree;
-    if (parent) element.isInner = true;
-    if (position != null && position >= 0 && position < targetArr.length) {
-      targetArr.splice(position, 0, element);
-    } else {
-      targetArr.push(element);
-    }
-    if (alias) page.aliases[alias] = element.id;
-    await this.record(page, "insert_element", element.id);
-    return element.id;
+    return this.withLock(pageId, async () => {
+      const page = await this.loadPage(pageId);
+      const targetArr = parent ? this.requireElement(page, parent).elements : page.tree;
+      if (parent) element.isInner = true;
+      if (position != null && position >= 0 && position < targetArr.length) {
+        targetArr.splice(position, 0, element);
+      } else {
+        targetArr.push(element);
+      }
+      if (alias) page.aliases[alias] = element.id;
+      await this.record(page, "insert_element", element.id);
+      return element.id;
+    });
   }
 
   async removeElement(pageId: string, target: string): Promise<ElementObject> {
-    const page = await this.loadPage(pageId);
-    const elementId = this.resolveId(page, target);
-    const { removed } = this.removeFromTree(page.tree, elementId);
-    if (!removed) throw new Error(`Element not found: ${target}`);
-    this.removeAliases(page, removed);
-    await this.record(page, "remove_element", elementId);
-    return removed;
+    return this.withLock(pageId, async () => {
+      const page = await this.loadPage(pageId);
+      const elementId = this.resolveId(page, target);
+      const { removed } = this.removeFromTree(page.tree, elementId);
+      if (!removed) throw new Error(`Element not found: ${target}`);
+      this.removeAliases(page, removed);
+      await this.record(page, "remove_element", elementId);
+      return removed;
+    });
   }
 
   async duplicateElement(pageId: string, target: string, alias?: string): Promise<string> {
-    const page = await this.loadPage(pageId);
-    const elementId = this.resolveId(page, target);
-    const newId = this.duplicateInTree(page.tree, elementId);
-    if (!newId) throw new Error(`Element not found: ${target}`);
-    if (alias) page.aliases[alias] = newId;
-    await this.record(page, "duplicate_element", newId);
-    return newId;
+    return this.withLock(pageId, async () => {
+      const page = await this.loadPage(pageId);
+      const elementId = this.resolveId(page, target);
+      const newId = this.duplicateInTree(page.tree, elementId);
+      if (!newId) throw new Error(`Element not found: ${target}`);
+      if (alias) page.aliases[alias] = newId;
+      await this.record(page, "duplicate_element", newId);
+      return newId;
+    });
   }
 
   async moveElement(pageId: string, target: string, parent?: string, position?: number): Promise<void> {
-    const page = await this.loadPage(pageId);
-    const elementId = this.resolveId(page, target);
-    const { removed } = this.removeFromTree(page.tree, elementId);
-    if (!removed) throw new Error(`Element not found: ${target}`);
-    const targetArr = parent ? this.requireElement(page, parent).elements : page.tree;
-    if (position != null && position >= 0 && position < targetArr.length) {
-      targetArr.splice(position, 0, removed);
-    } else {
-      targetArr.push(removed);
-    }
-    await this.record(page, "move_element", elementId);
+    return this.withLock(pageId, async () => {
+      const page = await this.loadPage(pageId);
+      const elementId = this.resolveId(page, target);
+      const { removed } = this.removeFromTree(page.tree, elementId);
+      if (!removed) throw new Error(`Element not found: ${target}`);
+      const targetArr = parent ? this.requireElement(page, parent).elements : page.tree;
+      if (position != null && position >= 0 && position < targetArr.length) {
+        targetArr.splice(position, 0, removed);
+      } else {
+        targetArr.push(removed);
+      }
+      await this.record(page, "move_element", elementId);
+    });
   }
 
   async reorderChildren(pageId: string, target: string, children: string[]): Promise<void> {
-    const page = await this.loadPage(pageId);
-    const parent = this.requireElement(page, target);
-    const wanted = children.map((c) => this.resolveId(page, c));
-    const byId = new Map(parent.elements.map((el) => [el.id, el]));
-    for (const id of wanted) {
-      if (!byId.has(id)) throw new Error(`Child element not found under target: ${id}`);
-    }
-    const reordered = wanted.map((id) => byId.get(id)!).filter(Boolean);
-    for (const child of parent.elements) {
-      if (!wanted.includes(child.id)) reordered.push(child);
-    }
-    parent.elements = reordered;
-    await this.record(page, "reorder_children", parent.id);
+    return this.withLock(pageId, async () => {
+      const page = await this.loadPage(pageId);
+      const parent = this.requireElement(page, target);
+      const wanted = children.map((c) => this.resolveId(page, c));
+      const byId = new Map(parent.elements.map((el) => [el.id, el]));
+      for (const id of wanted) {
+        if (!byId.has(id)) throw new Error(`Child element not found under target: ${id}`);
+      }
+      const reordered = wanted.map((id) => byId.get(id)!).filter(Boolean);
+      for (const child of parent.elements) {
+        if (!wanted.includes(child.id)) reordered.push(child);
+      }
+      parent.elements = reordered;
+      await this.record(page, "reorder_children", parent.id);
+    });
   }
 
   async patchSettings(pageId: string, target: string, settings: Record<string, unknown>): Promise<string> {
-    const page = await this.loadPage(pageId);
-    const element = this.requireElement(page, target);
-    element.settings = { ...element.settings, ...settings };
-    await this.record(page, "patch_settings", element.id);
-    return element.id;
+    return this.withLock(pageId, async () => {
+      const page = await this.loadPage(pageId);
+      const element = this.requireElement(page, target);
+      element.settings = { ...element.settings, ...settings };
+      await this.record(page, "patch_settings", element.id);
+      return element.id;
+    });
   }
 
   async preview(pageId: string): Promise<StructurePreviewNode[]> {

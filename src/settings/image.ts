@@ -16,66 +16,41 @@ type ImageObjectPosition =
   | "bottom right";
 
 interface ResponsiveInput<T> {
-  /** 桌面端设置，对应无后缀字段。 */
   desktop?: T;
-  /** 平板端设置，对应 _tablet 后缀字段。 */
   tablet?: T;
-  /** 手机端设置，对应 _mobile 后缀字段。 */
   mobile?: T;
 }
 
 interface ImageSizeValue {
-  /** CSS 单位。 */
   unit: ImageUnit;
-  /** 尺寸数值。 */
   size: number;
 }
 
 interface ImageDimensionValue {
-  /** CSS 单位。 */
   unit: ImageUnit;
-  /** 上边数值，输入为数字，写入 settings 时转成字符串。 */
   top: number;
-  /** 右边数值，输入为数字，写入 settings 时转成字符串。 */
   right: number;
-  /** 下边数值，输入为数字，写入 settings 时转成字符串。 */
   bottom: number;
-  /** 左边数值，输入为数字，写入 settings 时转成字符串。 */
   left: number;
-  /** 四边是否联动。 */
   isLinked: boolean;
 }
 
 interface SetImageBorderInput {
-  /** 图片边框样式。 */
   border: ImageBorderStyle;
-  /** 图片边框宽度。 */
   width: ImageDimensionValue;
-  /** 图片边框颜色。 */
   color: string;
 }
 
-/** 返回三端字段后缀，桌面端不使用后缀。 */
 function deviceSuffix(device: "desktop" | "tablet" | "mobile"): "" | "_tablet" | "_mobile" {
-  if (device === "tablet") {
-    return "_tablet";
-  }
-  if (device === "mobile") {
-    return "_mobile";
-  }
+  if (device === "tablet") return "_tablet";
+  if (device === "mobile") return "_mobile";
   return "";
 }
 
-/** 将图片尺寸输入转换为 Elementor size 对象。 */
 function normalizeImageSize(value: ImageSizeValue) {
-  return {
-    unit: value.unit,
-    size: value.size,
-    sizes: []
-  };
+  return { unit: value.unit, size: value.size, sizes: [] };
 }
 
-/** 将图片四边尺寸输入转换为 Elementor dimensions 对象。 */
 function normalizeImageDimension(value: ImageDimensionValue) {
   return {
     unit: value.unit,
@@ -87,7 +62,6 @@ function normalizeImageDimension(value: ImageDimensionValue) {
   };
 }
 
-/** 写入三端响应式字段。 */
 function setResponsiveValue<T>(
   settings: Record<string, unknown>,
   key: string,
@@ -102,29 +76,50 @@ function setResponsiveValue<T>(
   }
 }
 
-/** 设置图片宽度。 */
-export function set_image_width(settings: Record<string, unknown>, input: ResponsiveInput<ImageSizeValue>): void {
-  setResponsiveValue(settings, "width", input, normalizeImageSize);
+function resolveSize(input: number | ResponsiveInput<ImageSizeValue>): ResponsiveInput<ImageSizeValue> {
+  if (typeof input === "number") {
+    return { desktop: { unit: "px", size: input } };
+  }
+  return input;
 }
 
-/** 设置图片最大宽度。 */
-export function set_image_space(settings: Record<string, unknown>, input: ResponsiveInput<ImageSizeValue>): void {
-  setResponsiveValue(settings, "space", input, normalizeImageSize);
+function resolveString<T extends string>(input: T | ResponsiveInput<T>): ResponsiveInput<T> {
+  if (typeof input === "string") {
+    return { desktop: input as T };
+  }
+  return input;
 }
 
-/** 设置图片高度。 */
-export function set_image_height(settings: Record<string, unknown>, input: ResponsiveInput<ImageSizeValue>): void {
-  setResponsiveValue(settings, "height", input, normalizeImageSize);
+function resolveDimension(input: number | ResponsiveInput<ImageDimensionValue>): ResponsiveInput<ImageDimensionValue> {
+  if (typeof input === "number") {
+    return { desktop: { unit: "px", top: input, right: input, bottom: input, left: input, isLinked: true } };
+  }
+  return input;
 }
 
-/** 设置图片 object-fit。 */
-export function set_image_object_fit(settings: Record<string, unknown>, input: ResponsiveInput<ImageObjectFit>): void {
-  setResponsiveValue(settings, "object-fit", input, (value) => value);
+/** 设置图片宽度。裸值 number 表示 desktop px。 */
+export function set_image_width(settings: Record<string, unknown>, input: number | ResponsiveInput<ImageSizeValue>): void {
+  setResponsiveValue(settings, "width", resolveSize(input), normalizeImageSize);
 }
 
-/** 设置图片 object-position。 */
-export function set_image_object_position(settings: Record<string, unknown>, input: ResponsiveInput<ImageObjectPosition>): void {
-  setResponsiveValue(settings, "object-position", input, (value) => value);
+/** 设置图片外边距。裸值 number 表示 desktop px。 */
+export function set_image_space(settings: Record<string, unknown>, input: number | ResponsiveInput<ImageSizeValue>): void {
+  setResponsiveValue(settings, "space", resolveSize(input), normalizeImageSize);
+}
+
+/** 设置图片高度。裸值 number 表示 desktop px。 */
+export function set_image_height(settings: Record<string, unknown>, input: number | ResponsiveInput<ImageSizeValue>): void {
+  setResponsiveValue(settings, "height", resolveSize(input), normalizeImageSize);
+}
+
+/** 设置图片 object-fit。裸值字符串表示 desktop。 */
+export function set_image_object_fit(settings: Record<string, unknown>, input: ImageObjectFit | ResponsiveInput<ImageObjectFit>): void {
+  setResponsiveValue(settings, "object-fit", resolveString(input), (value) => value);
+}
+
+/** 设置图片 object-position。裸值字符串表示 desktop。 */
+export function set_image_object_position(settings: Record<string, unknown>, input: ImageObjectPosition | ResponsiveInput<ImageObjectPosition>): void {
+  setResponsiveValue(settings, "object-position", resolveString(input), (value) => value);
 }
 
 /** 设置图片边框样式、宽度和颜色。 */
@@ -134,9 +129,9 @@ export function set_image_border(settings: Record<string, unknown>, input: SetIm
   settings.image_border_color = input.color;
 }
 
-/** 设置图片圆角。 */
-export function set_image_border_radius(settings: Record<string, unknown>, input: ResponsiveInput<ImageDimensionValue>): void {
-  setResponsiveValue(settings, "image_border_radius", input, normalizeImageDimension);
+/** 设置图片圆角。裸值 number 表示 desktop px（四边联动）。 */
+export function set_image_border_radius(settings: Record<string, unknown>, input: number | ResponsiveInput<ImageDimensionValue>): void {
+  setResponsiveValue(settings, "image_border_radius", resolveDimension(input), normalizeImageDimension);
 }
 
 /** 图片组件专属 settings helper 名称列表。 */

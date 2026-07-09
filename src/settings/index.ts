@@ -1,4 +1,10 @@
 export type ResponsiveDevice = "desktop" | "tablet" | "mobile";
+export {
+  BASE_SETTING_HELPERS,
+  set_css_classes,
+  set_element_id,
+  set_z_index
+} from "./base.js";
 export { set_background, set_background_hover } from "./background.js";
 export {
   BUTTON_SETTING_HELPERS,
@@ -9,8 +15,9 @@ export {
   set_button_border_color,
   set_button_box_shadow,
   set_button_hover_border_color,
-  set_button_hover_color,
-  set_button_text_color
+  set_button_text_hover_color,
+  set_button_text_color,
+  set_button_text_padding
 } from "./button.js";
 export {
   set_border,

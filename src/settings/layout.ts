@@ -21,67 +21,39 @@ type GridJustifyItems = "start" | "center" | "end" | "stretch";
 type GridAlignItems = "start" | "center" | "end" | "stretch";
 
 interface ResponsiveInput<T> {
-  /** 桌面端设置，对应无后缀字段。 */
   desktop?: T;
-  /** 平板端设置，对应 _tablet 后缀字段。 */
   tablet?: T;
-  /** 手机端设置，对应 _mobile 后缀字段。 */
   mobile?: T;
 }
 
 interface LayoutSizeValue {
-  /** CSS 单位。 */
   unit: LayoutSizeUnit;
-  /** 尺寸数值。 */
   size: number;
 }
 
 interface LayoutGapValue {
-  /** CSS 单位。 */
   unit: LayoutSizeUnit;
-  /** 列间距，输入为数字，写入 settings 时转成字符串。 */
   column: number;
-  /** 行间距，输入为数字，写入 settings 时转成字符串。 */
   row: number;
-  /** 行列是否联动。 */
   isLinked: boolean;
 }
 
-interface SetContainerTypeInput {
-  /** 容器类型，flexbox 会写入 Elementor 的 flex。 */
-  type: ContainerType;
-}
-
 interface SetContainerWidthInput {
-  /** 内容宽度模式。 */
   contentWidth?: ContentWidth;
-  /** 自定义容器宽度，支持三端。 */
   width?: ResponsiveInput<LayoutSizeValue>;
-  /** boxed 模式宽度，支持三端。 */
   boxedWidth?: ResponsiveInput<LayoutSizeValue>;
 }
 
-/** 返回三端字段后缀，桌面端不使用后缀。 */
 function deviceSuffix(device: LayoutDevice): "" | "_tablet" | "_mobile" {
-  if (device === "tablet") {
-    return "_tablet";
-  }
-  if (device === "mobile") {
-    return "_mobile";
-  }
+  if (device === "tablet") return "_tablet";
+  if (device === "mobile") return "_mobile";
   return "";
 }
 
-/** 将尺寸输入转换为 Elementor size 对象。 */
 function normalizeSize(value: LayoutSizeValue) {
-  return {
-    unit: value.unit,
-    size: value.size,
-    sizes: []
-  };
+  return { unit: value.unit, size: value.size, sizes: [] };
 }
 
-/** 将 gap 输入转换为 Elementor gap 对象。 */
 function normalizeGap(value: LayoutGapValue, includeSize: boolean) {
   return {
     column: String(value.column),
@@ -92,7 +64,6 @@ function normalizeGap(value: LayoutGapValue, includeSize: boolean) {
   };
 }
 
-/** 将三端输入写入 settings。 */
 function setResponsiveValue<T>(
   settings: Record<string, unknown>,
   baseKey: string,
@@ -107,11 +78,32 @@ function setResponsiveValue<T>(
   }
 }
 
-/** 设置容器类型。 */
-export function set_container_type(settings: Record<string, unknown>, input: SetContainerTypeInput): void {
-  settings.container_type = input.type === "grid" ? "grid" : "flex";
+function resolveSize(input: number | ResponsiveInput<LayoutSizeValue>): ResponsiveInput<LayoutSizeValue> {
+  if (typeof input === "number") {
+    return { desktop: { unit: "px", size: input } };
+  }
+  return input;
+}
 
-  if (input.type === "grid") {
+function resolveGap(input: number | ResponsiveInput<LayoutGapValue>): ResponsiveInput<LayoutGapValue> {
+  if (typeof input === "number") {
+    return { desktop: { unit: "px", column: input, row: input, isLinked: true } };
+  }
+  return input;
+}
+
+function resolveString<T extends string>(input: T | ResponsiveInput<T>): ResponsiveInput<T> {
+  if (typeof input === "string") {
+    return { desktop: input as T };
+  }
+  return input;
+}
+
+/** 设置容器类型。接受裸值 "flexbox" / "grid" 或 { type } 对象。 */
+export function set_container_type(settings: Record<string, unknown>, input: ContainerType | { type: ContainerType }): void {
+  const type = typeof input === "string" ? input : input.type;
+  settings.container_type = type === "grid" ? "grid" : "flex";
+  if (type === "grid") {
     settings.presetTitle = "Grid";
     settings.presetIcon = "eicon-container-grid";
   }
@@ -122,72 +114,70 @@ export function set_container_width(settings: Record<string, unknown>, input: Se
   if (input.contentWidth) {
     settings.content_width = input.contentWidth;
   }
-
   if (input.width) {
     setResponsiveValue(settings, "width", input.width, (value) => normalizeSize(value));
   }
-
   if (input.boxedWidth) {
     setResponsiveValue(settings, "boxed_width", input.boxedWidth, (value) => normalizeSize(value));
   }
 }
 
-/** 设置容器最小高度，支持三端。 */
-export function set_min_height(settings: Record<string, unknown>, input: ResponsiveInput<LayoutSizeValue>): void {
-  setResponsiveValue(settings, "min_height", input, (value) => normalizeSize(value));
+/** 设置容器最小高度。裸值 number 表示 desktop px。 */
+export function set_min_height(settings: Record<string, unknown>, input: number | ResponsiveInput<LayoutSizeValue>): void {
+  setResponsiveValue(settings, "min_height", resolveSize(input), (value) => normalizeSize(value));
 }
 
-/** 设置 flex direction，支持三端。 */
-export function set_flex_direction(settings: Record<string, unknown>, input: ResponsiveInput<FlexDirection>): void {
-  setResponsiveValue(settings, "flex_direction", input, (value) => value);
+/** 设置 flex direction。裸值字符串表示 desktop。 */
+export function set_flex_direction(settings: Record<string, unknown>, input: FlexDirection | ResponsiveInput<FlexDirection>): void {
+  setResponsiveValue(settings, "flex_direction", resolveString(input), (value) => value);
 }
 
-/** 设置 flex justify content，支持三端。 */
-export function set_flex_justify_content(settings: Record<string, unknown>, input: ResponsiveInput<FlexJustifyContent>): void {
-  setResponsiveValue(settings, "flex_justify_content", input, (value) => value);
+/** 设置 flex justify content。裸值字符串表示 desktop。 */
+export function set_flex_justify_content(settings: Record<string, unknown>, input: FlexJustifyContent | ResponsiveInput<FlexJustifyContent>): void {
+  setResponsiveValue(settings, "flex_justify_content", resolveString(input), (value) => value);
 }
 
-/** 设置 flex align items，支持三端。 */
-export function set_flex_align_items(settings: Record<string, unknown>, input: ResponsiveInput<FlexAlignItems>): void {
-  setResponsiveValue(settings, "flex_align_items", input, (value) => value);
+/** 设置 flex align items。裸值字符串表示 desktop。 */
+export function set_flex_align_items(settings: Record<string, unknown>, input: FlexAlignItems | ResponsiveInput<FlexAlignItems>): void {
+  setResponsiveValue(settings, "flex_align_items", resolveString(input), (value) => value);
 }
 
-/** 设置 flex gap，支持三端。 */
-export function set_flex_gap(settings: Record<string, unknown>, input: ResponsiveInput<LayoutGapValue>): void {
-  setResponsiveValue(settings, "flex_gap", input, (value, device) => normalizeGap(value, device === "desktop"));
+/** 设置 flex gap。裸值 number 表示 desktop px（行列联动）。 */
+export function set_flex_gap(settings: Record<string, unknown>, input: number | ResponsiveInput<LayoutGapValue>): void {
+  setResponsiveValue(settings, "flex_gap", resolveGap(input), (value, device) => normalizeGap(value, device === "desktop"));
 }
 
-/** 设置 flex wrap，支持三端。 */
-export function set_flex_wrap(settings: Record<string, unknown>, input: ResponsiveInput<FlexWrap>): void {
-  setResponsiveValue(settings, "flex_wrap", input, (value) => value);
+/** 设置 flex wrap。裸值字符串表示 desktop。 */
+export function set_flex_wrap(settings: Record<string, unknown>, input: FlexWrap | ResponsiveInput<FlexWrap>): void {
+  setResponsiveValue(settings, "flex_wrap", resolveString(input), (value) => value);
 }
 
-/** 设置 grid columns，支持三端。 */
-export function set_grid_columns(settings: Record<string, unknown>, input: ResponsiveInput<LayoutSizeValue>): void {
-  setResponsiveValue(settings, "grid_columns_grid", input, (value) => normalizeSize(value));
+/** 设置 grid columns。裸值 number 表示 desktop px。 */
+export function set_grid_columns(settings: Record<string, unknown>, input: number | ResponsiveInput<LayoutSizeValue>): void {
+  setResponsiveValue(settings, "grid_columns_grid", resolveSize(input), (value) => normalizeSize(value));
 }
 
-/** 设置 grid rows，支持三端。 */
-export function set_grid_rows(settings: Record<string, unknown>, input: ResponsiveInput<LayoutSizeValue>): void {
-  setResponsiveValue(settings, "grid_rows_grid", input, (value) => normalizeSize(value));
+/** 设置 grid rows。裸值 number 表示 desktop px。 */
+export function set_grid_rows(settings: Record<string, unknown>, input: number | ResponsiveInput<LayoutSizeValue>): void {
+  setResponsiveValue(settings, "grid_rows_grid", resolveSize(input), (value) => normalizeSize(value));
 }
 
-/** 设置 grid gap，支持三端。 */
-export function set_grid_gap(settings: Record<string, unknown>, input: ResponsiveInput<LayoutGapValue>): void {
-  setResponsiveValue(settings, "grid_gaps", input, (value) => normalizeGap(value, false));
+/** 设置 grid gap。裸值 number 表示 desktop px（行列联动）。 */
+export function set_grid_gap(settings: Record<string, unknown>, input: number | ResponsiveInput<LayoutGapValue>): void {
+  setResponsiveValue(settings, "grid_gaps", resolveGap(input), (value) => normalizeGap(value, false));
 }
 
-/** 设置 grid auto flow，支持三端。 */
-export function set_grid_auto_flow(settings: Record<string, unknown>, input: ResponsiveInput<GridAutoFlow>): void {
-  setResponsiveValue(settings, "grid_auto_flow", input, (value) => value);
+/** 设置 grid auto flow。裸值字符串表示 desktop。 */
+export function set_grid_auto_flow(settings: Record<string, unknown>, input: GridAutoFlow | ResponsiveInput<GridAutoFlow>): void {
+  setResponsiveValue(settings, "grid_auto_flow", resolveString(input), (value) => value);
 }
 
-/** 设置 grid justify items，支持三端。 */
-export function set_grid_justify_items(settings: Record<string, unknown>, input: ResponsiveInput<GridJustifyItems>): void {
-  setResponsiveValue(settings, "grid_justify_items", input, (value) => value);
+/** 设置 grid justify items。裸值字符串表示 desktop。 */
+export function set_grid_justify_items(settings: Record<string, unknown>, input: GridJustifyItems | ResponsiveInput<GridJustifyItems>): void {
+  setResponsiveValue(settings, "grid_justify_items", resolveString(input), (value) => value);
 }
 
-/** 设置 grid align items，支持三端。 */
-export function set_grid_align_items(settings: Record<string, unknown>, input: ResponsiveInput<GridAlignItems>): void {
-  setResponsiveValue(settings, "grid_align_items", input, (value) => value);
+/** 设置 grid align items。裸值字符串表示 desktop。 */
+export function set_grid_align_items(settings: Record<string, unknown>, input: GridAlignItems | ResponsiveInput<GridAlignItems>): void {
+  setResponsiveValue(settings, "grid_align_items", resolveString(input), (value) => value);
 }

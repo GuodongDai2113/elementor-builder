@@ -10,8 +10,8 @@
   "scripts": {
     "clean": "node -e \"fs.rmSync('build',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc -p tsconfig.json",
-    "test": "npm run build && node src/test-runner.mjs",
-    "test:unit": "node src/test-runner.mjs"
+    "test": "npm run build && node --test",
+    "test:unit": "node --test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

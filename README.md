@@ -21,35 +21,36 @@ npm test
 
 Session and tree:
 
-- `builder_health`
-- `builder_create_session`
-- `builder_list_sessions`
-- `builder_get_session`
-- `builder_clear_session`
-- `builder_import_tree`
-- `builder_export_tree`
-- `builder_preview_structure`
-- `builder_validate`
+- `health`
+- `page_create`
+- `page_list`
+- `page_get`
+- `page_clear`
+- `import_tree`
+- `export_tree`
+- `preview_structure`
+- `validate_tree`
 
 Business editing APIs:
 
-- `builder_add`: add sections, containers, headings, text, buttons, images, and HTML widgets.
-- `builder_layout_edit`: edit layout and structure such as flex, move, and reorder.
-- `builder_content_edit`: edit widget content such as heading title, text HTML, button text/URL, image object, and HTML content.
-- `builder_style_edit`: edit component-specific styles such as heading typography, text color, button colors, image style, and container background/border/shadow.
-- `builder_advanced_edit`: edit global fields available to all elements, such as margin, padding, width, z-index, position, CSS ID/classes, entrance animation, raw advanced settings, duplicate, and remove.
+- `add_layout`: add a top-level layout container when `parent` is omitted, or add an inner container when `parent` is provided.
+- `add_heading`, `add_text`, `add_button`, `add_image`: add content elements after the layout exists.
+- `edit_content`: edit widget content such as heading title, text HTML, button text/URL, and image object.
+- `edit_style`: edit styles through a named helper with unified `value`, `scope`, and `device` inputs.
+- `remove_element`, `duplicate_element`, `move_element`, `reorder_children`: edit tree structure.
+- `helpers`: list available style helper names and value descriptions.
 
 ## Workflow
 
 ```text
-builder_create_session
-builder_add
-builder_content_edit
-builder_style_edit
-builder_advanced_edit
-builder_preview_structure
-builder_validate
-builder_export_tree
+page_create
+add_layout
+add_heading / add_text / add_button / add_image
+edit_content
+edit_style
+preview_structure
+validate_tree
+export_tree
 ```
 
 Pass the exported `tree` to `wp-api` with `wp_elementor_init` or `wp_elementor_import`.
