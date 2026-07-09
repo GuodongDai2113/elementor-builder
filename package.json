@@ -1,0 +1,24 @@
+{
+  "name": "elementor-builder-mcp",
+  "version": "1.0.0",
+  "author": "JellyDai",
+  "description": "Stateful MCP service for building Elementor JSON trees without connecting to WordPress",
+  "type": "module",
+  "bin": {
+    "elementor-builder-mcp": "./build/index.js"
+  },
+  "scripts": {
+    "clean": "node -e \"fs.rmSync('build',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "test": "npm run build && node src/test-runner.mjs",
+    "test:unit": "node src/test-runner.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "^5.8.3"
+  }
+}
