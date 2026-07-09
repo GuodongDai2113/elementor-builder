@@ -3,3 +3,4 @@ build/
 .elementor-builder/
 *.log
 superpowers/
+package-lock.json
